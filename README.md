@@ -19,85 +19,101 @@ At each step, explain what the new code is doing.
 - An Android emulator or iOS simulator running.
 - A valid breez API key set in `lib/constants.dart`
 
-## Step 3
-In `lib/home/home_page.dart` pass the Nodeless SDK singleton and `paymentEventStream` to the `ReceivePaymentDialog` widget.
+## Step 4
+In `lib/home/home_page.dart` pass the Nodeless SDK singleton to the `SendPaymentDialog` widget.
 ```dart
-                        builder: (context) => ReceivePaymentDialog(
-                            sdk: widget.sdk.instance!, paymentEventStream: widget.sdk.paymentEventStream),
+                        builder: (context) => SendPaymentDialog(sdk: widget.sdk.instance!),
 ```
-Update the imports in `lib/home/widgets/receive_dialog.dart`.
+Update the imports in `lib/home/widgets/send_dialog.dart`.
 ```dart
 import 'package:breez_sdk_nodeless_flutter_workshop/services/nodeless_sdk.dart';
 import 'package:flutter_breez_liquid/flutter_breez_liquid.dart';
 ```
-Update the `ReceivePaymentDialog` widget class to pass the Nodeless SDK singleton and `paymentEventStream`.
+Update the `SendPaymentDialog` widget class to pass the Nodeless SDK singleton.
 ```dart
-class ReceivePaymentDialog extends StatefulWidget {
+class SendPaymentDialog extends StatefulWidget {
   final BindingLiquidSdk sdk;
-  final Stream<PaymentEvent> paymentEventStream;
 
-  const ReceivePaymentDialog({super.key, required this.sdk, required this.paymentEventStream});
+  const SendPaymentDialog({super.key, required this.sdk});
 ```
-Add to the `_ReceivePaymentDialogState` class a `streamSubscription` variable.
+Add to the `_SendPaymentDialogState` class a `prepareResponse` variable.
 ```dart
-  StreamSubscription<PaymentEvent>? streamSubscription;
+  PrepareSendResponse? prepareResponse;
 ```
-Replace the `initState()` function to listen to the `paymentEventStream` and pop the dialog when the created receive payment is paid.
+Replace the `promptContent()` function which will now show the send payment fees once the invoice is pasted.
 ```dart
-  void initState() {
-    super.initState();
-    streamSubscription = widget.paymentEventStream.listen((paymentEvent) {
-      if (invoiceDestination != null && invoiceDestination!.isNotEmpty) {
-        final payment = paymentEvent.payment;
-        // Is it the payment for our created invoice
-        final doesDestinationMatch =
-            payment.destination != null && payment.destination! == invoiceDestination!;
-        // Has the payment state changed to Pending or Complete
-        final isPaymentReceived = payment.paymentType == PaymentType.receive &&
-            (payment.status == PaymentState.pending || payment.status == PaymentState.complete);
-
-        if (doesDestinationMatch && isPaymentReceived) {
-          debugPrint("Payment Received! Destination: ${payment.destination}, Status: ${payment.status}");
-          if (mounted) {
-            Navigator.of(context).pop();
-          }
-        }
-      }
-    });
-  }
+    Widget promptContent() {
+      return prepareResponse != null
+          ? Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                      'Please confirm that you agree to the payment fee of ${prepareResponse!.feesSat} sats.'),
+                ],
+              ),
+            )
+          : TextField(
+              decoration: InputDecoration(
+                label: const Text("Enter Invoice"),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.paste, color: Colors.blue),
+                  onPressed: () async {
+                    final clipboardData = await Clipboard.getData('text/plain');
+                    if (clipboardData != null && clipboardData.text != null) {
+                      invoiceController.text = clipboardData.text!;
+                    }
+                  },
+                ),
+              ),
+              controller: invoiceController,
+            );
+    }
 ```
-In the `dispose()` function cancel the `streamSubscription`.
+In the `onOkPressed()` function prepare the send payment using the pasted invoice, then store the prepare response in the state to show the fees.
 ```dart
-  @override
-  void dispose() {
-    streamSubscription?.cancel();
-    super.dispose();
-  }
-```
-In the `onOkPressed()` function first prepare the receive payment using the input amount, store the receiving fees in the state, then confirm the payment using the response from the prepare request.
-```dart
-        // Parse the input amount and prepare to receive a lightning payment
-        int amountSat = int.parse(payerAmountController.text);
-        PrepareReceiveRequest prepareReceiveReq = PrepareReceiveRequest(
-          paymentMethod: PaymentMethod.lightning,
-          payerAmountSat: BigInt.from(amountSat),
+        // Use the input text as the destination of the send payment
+        PrepareSendRequest prepareSendReq = PrepareSendRequest(
+          destination: invoiceController.text,
         );
-        PrepareReceiveResponse prepareResponse = await widget.sdk.prepareReceivePayment(
-          req: prepareReceiveReq,
+        PrepareSendResponse res = await widget.sdk.prepareSendPayment(
+          req: prepareSendReq,
         );
-        // Set the feesSat state from the prepare response. These are the fees the receiver will pay
-        setState(() {
-          payerAmountSat = prepareResponse.payerAmountSat?.toInt();
-          feesSat = prepareResponse.feesSat.toInt();
-        });
-        // Confirm the payment with the prepare response
-        ReceivePaymentRequest receiveReq = ReceivePaymentRequest(
-          prepareResponse: prepareResponse,
-        );
-        ReceivePaymentResponse resp = await widget.sdk.receivePayment(req: receiveReq);
         debugPrint(
-          "Created Invoice for $payerAmountSat sats with $feesSat sats fees.\nDestination:${resp.destination}",
+          "PrepareSendResponse destination ${res.destination}, fees: ${res.feesSat}",
         );
-        // Set the invoiceDestination state to display the QR code
-        setState(() => invoiceDestination = resp.destination);
+        // Set the prepareResponse state to display the fees
+        setState(() => prepareResponse = res);
+```
+In the `onConfirmPressed()` function once the fees are accepted, use the `prepareResponse` to confirm the payment.
+```dart
+        // Confirm the payment with the prepare response
+        SendPaymentRequest sendPaymentReq = SendPaymentRequest(
+          prepareResponse: prepareResponse!,
+        );
+        SendPaymentResponse res = await widget.sdk.sendPayment(req: sendPaymentReq);
+        debugPrint("Paid ${res.payment.txId}");
+```
+Update the `AlertDialog` actions to either show the Ok or Confirm button depending if the send payment has been prepared.
+```dart
+      actions: paymentInProgress
+          ? []
+          : [
+              TextButton(
+                child: const Text("Cancel"),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+              prepareResponse == null
+                  ? TextButton(
+                      onPressed: onOkPressed,
+                      child: const Text("Ok"),
+                    )
+                  : TextButton(
+                      onPressed: onConfirmPressed,
+                      child: const Text("Confirm"),
+                    ),
+            ],
 ```
