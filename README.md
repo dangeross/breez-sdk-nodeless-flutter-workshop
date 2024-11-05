@@ -19,77 +19,66 @@ At each step, explain what the new code is doing.
 - An Android emulator or iOS simulator running.
 - A valid breez API key set in `lib/constants.dart`
 
-## Step 1
-In `pubspec.yaml` add the Breez SDK nodeless dependencies.
-```yaml
-  breez_liquid:
-    git:
-      url: https://github.com/breez/breez-sdk-liquid-dart
-  flutter_breez_liquid:
-    git:
-      url: https://github.com/breez/breez-sdk-liquid-flutter
-  flutter_rust_bridge: 2.4.0
-```
-
-Copy over the config helper and NodelessSdk singleton class.
-- `lib/utils/config.dart`
-- `lib/services/nodeless_sdk.dart`
-
-Update the imports in `lib/main.dart` and set the `breezApiKey` in `lib/constants.dart`.
+## Step 2
+In `lib/home/home_page.dart` pass the Nodeless SDK `getInfoStream` to the `Balance` widget.
 ```dart
-import 'package:bip39/bip39.dart' as bip39;
+            Balance(getInfoStream: widget.sdk.getInfoStream),
+```
+Update the imports in `lib/home/widgets/balance.dart`.
+```dart
+import 'package:breez_sdk_nodeless_flutter_workshop/services/nodeless_sdk.dart';
 import 'package:flutter_breez_liquid/flutter_breez_liquid.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'constants.dart';
 ```
-Update the `main()` function to initialize and connect to the Nodeless SDK.
-We are also reading the mnemonic from the Flutter secure storage. 
-If the mnemonic does not exist, then we generate a new one.
+Update the `Balance` widget class to pass the Nodeless SDK `getInfoStream`.
 ```dart
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  // Initialize the Breez SDK Nodeless bindings
-  await initialize();
-  final NodelessSdk sdk = NodelessSdk();
-  const secureStorage = FlutterSecureStorage();
+class Balance extends StatelessWidget {
+  final Stream<GetInfoResponse> getInfoStream;
 
-  var mnemonic = await secureStorage.read(key: "mnemonic");
-  if (mnemonic == null) {
-    mnemonic = bip39.generateMnemonic();
-    secureStorage.write(key: "mnemonic", value: mnemonic);
+  const Balance({super.key, required this.getInfoStream});
+```
+Replace the `build()` function with a StreamBuilder that listens to the `getInfoStream` and updates the widget.
+Whenever the getInfo changes the wallet balance and pending balanaces are updated.
+```dart
+  Widget build(BuildContext context) {
+    return StreamBuilder<GetInfoResponse>(
+      stream: getInfoStream,
+      builder: (context, getInfoSnapshot) {
+        if (getInfoSnapshot.hasError) {
+          return Center(child: Text('Error: ${getInfoSnapshot.error}'));
+        }
+
+        if (!getInfoSnapshot.hasData) {
+          return const Center(child: Text('Loading...'));
+        }
+
+        final getInfo = getInfoSnapshot.data!;
+
+        return Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.max,
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                "${getInfo.balanceSat} sats",
+                style: Theme.of(context).textTheme.headlineLarge?.copyWith(color: Colors.blue),
+              ),
+              if (getInfo.pendingReceiveSat != BigInt.zero) ...[
+                Text(
+                  "Pending Receive: ${getInfo.pendingReceiveSat} sats",
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Colors.blueGrey),
+                ),
+              ],
+              if (getInfo.pendingSendSat != BigInt.zero) ...[
+                Text(
+                  "Pending Send: ${getInfo.pendingSendSat} sats",
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Colors.blueGrey),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
   }
-
-  await reconnect(sdk: sdk, mnemonic: mnemonic);
-  runApp(App(sdk: sdk));
-}
-
-Future<void> reconnect({
-  required NodelessSdk sdk,
-  required String mnemonic,
-  LiquidNetwork network = LiquidNetwork.mainnet,
-}) async {
-  // Get the default config using the breezApiKey set in `lib/constants.dart`
-  final config = await getConfig(
-    network: network,
-    breezApiKey: breezApiKey,
-  );
-  final req = ConnectRequest(
-    mnemonic: mnemonic,
-    config: config,
-  );
-}
-```
-Update the `App` and `HomePage` widget classes to pass the NodelessSdk singleton.
-```dart
-class App extends StatefulWidget {
-  final NodelessSdk sdk;
-
-  const App({super.key, required this.sdk});
-```
-
-```dart
-class HomePage extends StatefulWidget {
-  final NodelessSdk sdk;
-
-  const HomePage({super.key, required this.sdk});
 ```

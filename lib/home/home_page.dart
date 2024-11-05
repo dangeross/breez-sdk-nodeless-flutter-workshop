@@ -24,7 +24,7 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            Balance(),
+            Balance(getInfoStream: widget.sdk.getInfoStream),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
