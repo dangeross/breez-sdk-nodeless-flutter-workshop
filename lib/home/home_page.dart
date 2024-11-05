@@ -1,10 +1,13 @@
 import 'package:breez_sdk_nodeless_flutter_workshop/home/widgets/balance.dart';
 import 'package:breez_sdk_nodeless_flutter_workshop/home/widgets/receive_dialog.dart';
 import 'package:breez_sdk_nodeless_flutter_workshop/home/widgets/send_dialog.dart';
+import 'package:breez_sdk_nodeless_flutter_workshop/services/nodeless_sdk.dart';
 import 'package:flutter/material.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final NodelessSdk sdk;
+
+  const HomePage({super.key, required this.sdk});
 
   @override
   State<HomePage> createState() => _HomePageState();
