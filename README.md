@@ -19,66 +19,85 @@ At each step, explain what the new code is doing.
 - An Android emulator or iOS simulator running.
 - A valid breez API key set in `lib/constants.dart`
 
-## Step 2
-In `lib/home/home_page.dart` pass the Nodeless SDK `getInfoStream` to the `Balance` widget.
+## Step 3
+In `lib/home/home_page.dart` pass the Nodeless SDK singleton and `paymentEventStream` to the `ReceivePaymentDialog` widget.
 ```dart
-            Balance(getInfoStream: widget.sdk.getInfoStream),
+                        builder: (context) => ReceivePaymentDialog(
+                            sdk: widget.sdk.instance!, paymentEventStream: widget.sdk.paymentEventStream),
 ```
-Update the imports in `lib/home/widgets/balance.dart`.
+Update the imports in `lib/home/widgets/receive_dialog.dart`.
 ```dart
 import 'package:breez_sdk_nodeless_flutter_workshop/services/nodeless_sdk.dart';
 import 'package:flutter_breez_liquid/flutter_breez_liquid.dart';
 ```
-Update the `Balance` widget class to pass the Nodeless SDK `getInfoStream`.
+Update the `ReceivePaymentDialog` widget class to pass the Nodeless SDK singleton and `paymentEventStream`.
 ```dart
-class Balance extends StatelessWidget {
-  final Stream<GetInfoResponse> getInfoStream;
+class ReceivePaymentDialog extends StatefulWidget {
+  final BindingLiquidSdk sdk;
+  final Stream<PaymentEvent> paymentEventStream;
 
-  const Balance({super.key, required this.getInfoStream});
+  const ReceivePaymentDialog({super.key, required this.sdk, required this.paymentEventStream});
 ```
-Replace the `build()` function with a StreamBuilder that listens to the `getInfoStream` and updates the widget.
-Whenever the getInfo changes the wallet balance and pending balanaces are updated.
+Add to the `_ReceivePaymentDialogState` class a `streamSubscription` variable.
 ```dart
-  Widget build(BuildContext context) {
-    return StreamBuilder<GetInfoResponse>(
-      stream: getInfoStream,
-      builder: (context, getInfoSnapshot) {
-        if (getInfoSnapshot.hasError) {
-          return Center(child: Text('Error: ${getInfoSnapshot.error}'));
+  StreamSubscription<PaymentEvent>? streamSubscription;
+```
+Replace the `initState()` function to listen to the `paymentEventStream` and pop the dialog when the created receive payment is paid.
+```dart
+  void initState() {
+    super.initState();
+    streamSubscription = widget.paymentEventStream.listen((paymentEvent) {
+      if (invoiceDestination != null && invoiceDestination!.isNotEmpty) {
+        final payment = paymentEvent.payment;
+        // Is it the payment for our created invoice
+        final doesDestinationMatch =
+            payment.destination != null && payment.destination! == invoiceDestination!;
+        // Has the payment state changed to Pending or Complete
+        final isPaymentReceived = payment.paymentType == PaymentType.receive &&
+            (payment.status == PaymentState.pending || payment.status == PaymentState.complete);
+
+        if (doesDestinationMatch && isPaymentReceived) {
+          debugPrint("Payment Received! Destination: ${payment.destination}, Status: ${payment.status}");
+          if (mounted) {
+            Navigator.of(context).pop();
+          }
         }
-
-        if (!getInfoSnapshot.hasData) {
-          return const Center(child: Text('Loading...'));
-        }
-
-        final getInfo = getInfoSnapshot.data!;
-
-        return Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.max,
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text(
-                "${getInfo.balanceSat} sats",
-                style: Theme.of(context).textTheme.headlineLarge?.copyWith(color: Colors.blue),
-              ),
-              if (getInfo.pendingReceiveSat != BigInt.zero) ...[
-                Text(
-                  "Pending Receive: ${getInfo.pendingReceiveSat} sats",
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Colors.blueGrey),
-                ),
-              ],
-              if (getInfo.pendingSendSat != BigInt.zero) ...[
-                Text(
-                  "Pending Send: ${getInfo.pendingSendSat} sats",
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Colors.blueGrey),
-                ),
-              ],
-            ],
-          ),
-        );
-      },
-    );
+      }
+    });
   }
+```
+In the `dispose()` function cancel the `streamSubscription`.
+```dart
+  @override
+  void dispose() {
+    streamSubscription?.cancel();
+    super.dispose();
+  }
+```
+In the `onOkPressed()` function first prepare the receive payment using the input amount, store the receiving fees in the state, then confirm the payment using the response from the prepare request.
+```dart
+        // Parse the input amount and prepare to receive a lightning payment
+        int amountSat = int.parse(payerAmountController.text);
+        PrepareReceiveRequest prepareReceiveReq = PrepareReceiveRequest(
+          paymentMethod: PaymentMethod.lightning,
+          payerAmountSat: BigInt.from(amountSat),
+        );
+        PrepareReceiveResponse prepareResponse = await widget.sdk.prepareReceivePayment(
+          req: prepareReceiveReq,
+        );
+        // Set the feesSat state from the prepare response. These are the fees the receiver will pay
+        setState(() {
+          payerAmountSat = prepareResponse.payerAmountSat?.toInt();
+          feesSat = prepareResponse.feesSat.toInt();
+        });
+        // Confirm the payment with the prepare response
+        ReceivePaymentRequest receiveReq = ReceivePaymentRequest(
+          prepareResponse: prepareResponse,
+        );
+        ReceivePaymentResponse resp = await widget.sdk.receivePayment(req: receiveReq);
+        debugPrint(
+          "Created Invoice for $payerAmountSat sats with $feesSat sats fees.\nDestination:${resp.destination}",
+        );
+        // Set the invoiceDestination state to display the QR code
+        setState(() => invoiceDestination = resp.destination);
 ```

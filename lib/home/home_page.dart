@@ -34,7 +34,8 @@ class _HomePageState extends State<HomePage> {
                     onPressed: () {
                       showDialog(
                         context: context,
-                        builder: (context) => ReceivePaymentDialog(),
+                        builder: (context) => ReceivePaymentDialog(
+                            sdk: widget.sdk.instance!, paymentEventStream: widget.sdk.paymentEventStream),
                       );
                     },
                     child: const Text("Receive"),

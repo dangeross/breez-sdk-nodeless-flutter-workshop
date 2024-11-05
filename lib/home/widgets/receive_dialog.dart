@@ -1,10 +1,15 @@
 import 'dart:async';
+import 'package:breez_sdk_nodeless_flutter_workshop/services/nodeless_sdk.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_breez_liquid/flutter_breez_liquid.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 class ReceivePaymentDialog extends StatefulWidget {
-  const ReceivePaymentDialog({super.key});
+  final BindingLiquidSdk sdk;
+  final Stream<PaymentEvent> paymentEventStream;
+
+  const ReceivePaymentDialog({super.key, required this.sdk, required this.paymentEventStream});
 
   @override
   State<ReceivePaymentDialog> createState() => _ReceivePaymentDialogState();
@@ -18,13 +23,34 @@ class _ReceivePaymentDialogState extends State<ReceivePaymentDialog> {
   bool creatingInvoice = false;
   String? invoiceDestination;
 
+  StreamSubscription<PaymentEvent>? streamSubscription;
+
   @override
   void initState() {
     super.initState();
+    streamSubscription = widget.paymentEventStream.listen((paymentEvent) {
+      if (invoiceDestination != null && invoiceDestination!.isNotEmpty) {
+        final payment = paymentEvent.payment;
+        // Is it the payment for our created invoice
+        final doesDestinationMatch =
+            payment.destination != null && payment.destination! == invoiceDestination!;
+        // Has the payment state changed to Pending or Complete
+        final isPaymentReceived = payment.paymentType == PaymentType.receive &&
+            (payment.status == PaymentState.pending || payment.status == PaymentState.complete);
+
+        if (doesDestinationMatch && isPaymentReceived) {
+          debugPrint("Payment Received! Destination: ${payment.destination}, Status: ${payment.status}");
+          if (mounted) {
+            Navigator.of(context).pop();
+          }
+        }
+      }
+    });
   }
 
   @override
   void dispose() {
+    streamSubscription?.cancel();
     super.dispose();
   }
 
@@ -84,6 +110,30 @@ class _ReceivePaymentDialogState extends State<ReceivePaymentDialog> {
     Future<void> onOkPressed() async {
       try {
         setState(() => creatingInvoice = true);
+        // Parse the input amount and prepare to receive a lightning payment
+        int amountSat = int.parse(payerAmountController.text);
+        PrepareReceiveRequest prepareReceiveReq = PrepareReceiveRequest(
+          paymentMethod: PaymentMethod.lightning,
+          payerAmountSat: BigInt.from(amountSat),
+        );
+        PrepareReceiveResponse prepareResponse = await widget.sdk.prepareReceivePayment(
+          req: prepareReceiveReq,
+        );
+        // Set the feesSat state from the prepare response. These are the fees the receiver will pay
+        setState(() {
+          payerAmountSat = prepareResponse.payerAmountSat?.toInt();
+          feesSat = prepareResponse.feesSat.toInt();
+        });
+        // Confirm the payment with the prepare response
+        ReceivePaymentRequest receiveReq = ReceivePaymentRequest(
+          prepareResponse: prepareResponse,
+        );
+        ReceivePaymentResponse resp = await widget.sdk.receivePayment(req: receiveReq);
+        debugPrint(
+          "Created Invoice for $payerAmountSat sats with $feesSat sats fees.\nDestination:${resp.destination}",
+        );
+        // Set the invoiceDestination state to display the QR code
+        setState(() => invoiceDestination = resp.destination);
       } catch (e) {
         setState(() {
           payerAmountSat = null;
