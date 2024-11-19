@@ -38,6 +38,8 @@ Copy over the config helper and NodelessSdk singleton class.
 Update the imports in `lib/main.dart` and set the `breezApiKey` in `lib/constants.dart`.
 ```dart
 import 'package:bip39/bip39.dart' as bip39;
+import 'package:breez_sdk_nodeless_flutter_workshop/services/nodeless_sdk.dart';
+import 'package:breez_sdk_nodeless_flutter_workshop/utils/config.dart';
 import 'package:flutter_breez_liquid/flutter_breez_liquid.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'constants.dart';
@@ -77,16 +79,22 @@ Future<void> reconnect({
     mnemonic: mnemonic,
     config: config,
   );
+  await sdk.connect(req: req);
 }
 ```
-Update the `App` and `HomePage` widget classes to pass the NodelessSdk singleton.
+Update the `App` widget class to pass the NodelessSdk singleton.
 ```dart
 class App extends StatefulWidget {
   final NodelessSdk sdk;
 
   const App({super.key, required this.sdk});
 ```
-
+Update the imports in `lib/home/home_page.dart`.
+```dart
+import 'package:breez_sdk_nodeless_flutter_workshop/services/nodeless_sdk.dart';
+import 'package:flutter_breez_liquid/flutter_breez_liquid.dart';
+```
+Update the `HomePage` widget class to pass the NodelessSdk singleton.
 ```dart
 class HomePage extends StatefulWidget {
   final NodelessSdk sdk;
