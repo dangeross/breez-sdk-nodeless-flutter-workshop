@@ -23,6 +23,6 @@ At each step, we explain what the new code is doing.
 
 Head on over to Breez's YouTube channel to watch us integrate self-custodial bitcoin payments into our demo app.
 
-[![Breez SDK - Nodeless Tutorial](https://drive.google.com/uc?id=1-C_qXWOd28DCdNFxEYg05MLQtpJ_yrza)](https://youtube.com/playlist?list=PLU5Dk7xLNHcRkl4YvXOlIHvoi5-5n5Xpj&si=1VE9Gdy)
+[![Example Image](https://drive.google.com/uc?id=1YSWJHYjiZiK33m6u4mbMdIbm6cF_GDnI)](https://youtube.com/playlist?list=PLU5Dk7xLNHcRkl4YvXOlIHvoi5-5n5Xpj&si=1VE9Gdy)
 
 Ready to get started? [Head over to our Nodeless repo for more details.](https://github.com/breez/breez-sdk-liquid)
