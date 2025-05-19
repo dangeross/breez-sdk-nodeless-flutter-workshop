@@ -42,13 +42,11 @@ dependencies:
   qr_flutter: ^4.1.0
   logging: ^1.2.0
   rxdart: ^0.27.7
-  breez_liquid:
-    git:
-      url: https://github.com/breez/breez-sdk-liquid-dart
   flutter_breez_liquid:
     git:
       url: https://github.com/breez/breez-sdk-liquid-flutter
-  flutter_rust_bridge: 2.4.0
+      ref: v0.8.3
+  flutter_rust_bridge: 2.9.0
 
 dev_dependencies:
   flutter_test:

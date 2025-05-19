@@ -60,18 +60,18 @@ Whenever the getInfo changes the wallet balance and pending balanaces are update
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text(
-                "${getInfo.balanceSat} sats",
+                "${getInfo.walletInfo.balanceSat} sats",
                 style: Theme.of(context).textTheme.headlineLarge?.copyWith(color: Colors.blue),
               ),
-              if (getInfo.pendingReceiveSat != BigInt.zero) ...[
+              if (getInfo.walletInfo.pendingReceiveSat != BigInt.zero) ...[
                 Text(
-                  "Pending Receive: ${getInfo.pendingReceiveSat} sats",
+                  "Pending Receive: ${getInfo.walletInfo.pendingReceiveSat} sats",
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Colors.blueGrey),
                 ),
               ],
-              if (getInfo.pendingSendSat != BigInt.zero) ...[
+              if (getInfo.walletInfo.pendingSendSat != BigInt.zero) ...[
                 Text(
-                  "Pending Send: ${getInfo.pendingSendSat} sats",
+                  "Pending Send: ${getInfo.walletInfo.pendingSendSat} sats",
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Colors.blueGrey),
                 ),
               ],
