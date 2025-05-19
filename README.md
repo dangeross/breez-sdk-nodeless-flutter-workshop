@@ -22,13 +22,11 @@ At each step, explain what the new code is doing.
 ## Step 1
 In `pubspec.yaml` add the Breez SDK nodeless dependencies.
 ```yaml
-  breez_liquid:
-    git:
-      url: https://github.com/breez/breez-sdk-liquid-dart
   flutter_breez_liquid:
     git:
       url: https://github.com/breez/breez-sdk-liquid-flutter
-  flutter_rust_bridge: 2.4.0
+      ref: v0.8.3
+  flutter_rust_bridge: 2.9.0
 ```
 
 Copy over the config helper and NodelessSdk singleton class.

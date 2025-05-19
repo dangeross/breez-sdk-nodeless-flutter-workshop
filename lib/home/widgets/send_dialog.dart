@@ -33,14 +33,14 @@ class _SendPaymentDialogState extends State<SendPaymentDialog> {
     }
 
     Widget inProgressContent() {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text("Sending..."),
-            const SizedBox(height: 16),
-            const CircularProgressIndicator(color: Colors.blue),
+            SizedBox(height: 16),
+            CircularProgressIndicator(color: Colors.blue),
           ],
         ),
       );
