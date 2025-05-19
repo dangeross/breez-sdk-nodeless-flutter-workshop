@@ -78,16 +78,17 @@ In the `onOkPressed()` function first prepare the receive payment using the inpu
 ```dart
         // Parse the input amount and prepare to receive a lightning payment
         int amountSat = int.parse(payerAmountController.text);
+        ReceiveAmount_Bitcoin receiveAmount = ReceiveAmount_Bitcoin(payerAmountSat: BigInt.from(amountSat));
         PrepareReceiveRequest prepareReceiveReq = PrepareReceiveRequest(
           paymentMethod: PaymentMethod.lightning,
-          payerAmountSat: BigInt.from(amountSat),
+          amount: receiveAmount,
         );
         PrepareReceiveResponse prepareResponse = await widget.sdk.prepareReceivePayment(
           req: prepareReceiveReq,
         );
         // Set the feesSat state from the prepare response. These are the fees the receiver will pay
         setState(() {
-          payerAmountSat = prepareResponse.payerAmountSat?.toInt();
+          payerAmountSat = amountSat;
           feesSat = prepareResponse.feesSat.toInt();
         });
         // Confirm the payment with the prepare response

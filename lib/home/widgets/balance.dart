@@ -1,4 +1,3 @@
-import 'package:breez_sdk_nodeless_flutter_workshop/services/nodeless_sdk.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_breez_liquid/flutter_breez_liquid.dart';
 
@@ -29,18 +28,18 @@ class Balance extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text(
-                "${getInfo.balanceSat} sats",
+                "${getInfo.walletInfo.balanceSat} sats",
                 style: Theme.of(context).textTheme.headlineLarge?.copyWith(color: Colors.blue),
               ),
-              if (getInfo.pendingReceiveSat != BigInt.zero) ...[
+              if (getInfo.walletInfo.pendingReceiveSat != BigInt.zero) ...[
                 Text(
-                  "Pending Receive: ${getInfo.pendingReceiveSat} sats",
+                  "Pending Receive: ${getInfo.walletInfo.pendingReceiveSat} sats",
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Colors.blueGrey),
                 ),
               ],
-              if (getInfo.pendingSendSat != BigInt.zero) ...[
+              if (getInfo.walletInfo.pendingSendSat != BigInt.zero) ...[
                 Text(
-                  "Pending Send: ${getInfo.pendingSendSat} sats",
+                  "Pending Send: ${getInfo.walletInfo.pendingSendSat} sats",
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Colors.blueGrey),
                 ),
               ],
