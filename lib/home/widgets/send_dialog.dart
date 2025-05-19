@@ -1,4 +1,3 @@
-import 'package:breez_sdk_nodeless_flutter_workshop/services/nodeless_sdk.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_breez_liquid/flutter_breez_liquid.dart';
